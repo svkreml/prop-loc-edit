@@ -18,13 +18,13 @@ public class TranslationEditor extends JFrame {
     private OrderedProperties russianProps;
     private String englishFile;
     private String russianFile;
-    private final Preferences prefs;
+    private final transient Preferences prefs;
     private static final String PREF_ENGLISH_FILE = "englishFile";
     private static final String PREF_RUSSIAN_FILE = "russianFile";
 
     public TranslationEditor() {
         setTitle("Редактор переводов");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setSize(1400, 1000);
         setLocationRelativeTo(null);
 
