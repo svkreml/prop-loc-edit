@@ -353,7 +353,7 @@ public class TranslationEditor extends JFrame {
     // Кастомный рендерер для номеров строк
     private static class RowNumberRenderer extends JLabel implements TableCellRenderer {
         public RowNumberRenderer() {
-            setHorizontalAlignment(JLabel.CENTER);
+            setHorizontalAlignment(SwingConstants.CENTER);
             setOpaque(true);
         }
 
