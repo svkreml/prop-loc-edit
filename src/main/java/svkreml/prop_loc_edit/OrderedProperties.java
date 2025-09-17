@@ -3,13 +3,14 @@ package svkreml.prop_loc_edit;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class OrderedProperties extends Properties {
     private final LinkedHashMap<Object, Object> linkedMap = new LinkedHashMap<>();
 
     @Override
     public Set<String> stringPropertyNames() {
-        return super.stringPropertyNames();
+        return linkedMap.keySet().stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     @Override
@@ -20,6 +21,12 @@ public class OrderedProperties extends Properties {
     @Override
     public Enumeration<?> propertyNames() {
         return Collections.enumeration(stringPropertyNames());
+    }
+
+    @Override
+    public String getProperty(String key, String defaultValue) {
+        String val = getProperty(key);
+        return (val == null) ? defaultValue : val;
     }
 
     @Override
@@ -133,9 +140,11 @@ public class OrderedProperties extends Properties {
     private void extracted(Writer writer) throws IOException {
         for (Map.Entry<Object, Object> entry : linkedMap.entrySet()) {
             writer.write(entry.getKey().toString().replace(" ", "\\ ") + "=" + entry.getValue().toString()
+                    .replace("\\", "\\\\")
                     .replace("\n", "\\\n")
                     .replace(":","\\:")
                     .replace("!","\\!")
+                    .replace("=","\\=")
                          + "\n");
         }
     }
@@ -147,6 +156,4 @@ public class OrderedProperties extends Properties {
         Properties defaults;
         return ((sval == null) && ((defaults = this.defaults) != null)) ? defaults.getProperty(key) : sval;
     }
-
-    // То же самое для других методов, если нужно...
 }
