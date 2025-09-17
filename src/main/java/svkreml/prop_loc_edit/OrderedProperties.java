@@ -106,14 +106,46 @@ public class OrderedProperties extends Properties {
         }
     }
 
+    @Override
+    public synchronized void load(Reader reader) throws IOException {
+        Objects.requireNonNull(reader, "reader parameter is null");
+        super.load(reader);
+        for (Map.Entry<Object, Object> entry : super.entrySet()) {
+            linkedMap.put(entry.getKey(), entry.getValue());
+        }
+    }
+
     // Сохраняем порядок при сохранении
     @Override
     public void store(OutputStream out, String comments) throws IOException {
         try (Writer writer = new OutputStreamWriter(out, StandardCharsets.UTF_8)) {
-            for (Map.Entry<Object, Object> entry : linkedMap.entrySet()) {
-                writer.write(entry.getKey().toString().replace(" ", "\\ ") + "=" + entry.getValue().toString().replace("\n", "\\\n") + "\n");
-            }
+            store(writer, comments);
         }
+    }
+
+    @Override
+    public void store(Writer writer, String comments)
+            throws IOException
+    {
+        extracted(writer);
+    }
+
+    private void extracted(Writer writer) throws IOException {
+        for (Map.Entry<Object, Object> entry : linkedMap.entrySet()) {
+            writer.write(entry.getKey().toString().replace(" ", "\\ ") + "=" + entry.getValue().toString()
+                    .replace("\n", "\\\n")
+                    .replace(":","\\:")
+                    .replace("!","\\!")
+                         + "\n");
+        }
+    }
+
+    @Override
+    public String getProperty(String key) {
+        Object oval = linkedMap.get(key);
+        String sval = (oval instanceof String) ? (String)oval : null;
+        Properties defaults;
+        return ((sval == null) && ((defaults = this.defaults) != null)) ? defaults.getProperty(key) : sval;
     }
 
     // То же самое для других методов, если нужно...

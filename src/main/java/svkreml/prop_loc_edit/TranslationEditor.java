@@ -14,8 +14,6 @@ public class TranslationEditor extends JFrame {
     private DefaultTableModel tableModel;
     private OrderedProperties englishProps;
     private OrderedProperties russianProps;
-    private OrderedProperties originalEnglishProps;
-    private OrderedProperties originalRussianProps;
     private String englishFile;
     private String russianFile;
     private Preferences prefs;
@@ -55,11 +53,11 @@ public class TranslationEditor extends JFrame {
     }
 
     private void initializeComponents() {
-        // Создание таблицы
-        tableModel = new DefaultTableModel(new Object[]{"Ключ", "Английский", "Русский"}, 0) {
+        // Создание таблицы с номерами строк
+        tableModel = new DefaultTableModel(new Object[]{"№", "Ключ", "Английский", "Русский"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return true; // Все колонки редактируемы
+                return column > 0; // Все колонки кроме номера строки редактируемы
             }
         };
 
@@ -68,8 +66,14 @@ public class TranslationEditor extends JFrame {
             public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
                 Component c = super.prepareRenderer(renderer, row, column);
 
+                // Для колонки с номерами строк
+                if (column == 0) {
+                    c.setBackground(new Color(240, 240, 240)); // Светло-серый фон
+                    return c;
+                }
+
                 // Получаем ключ для текущей строки
-                String key = (String) getValueAt(row, 0);
+                String key = (String) getValueAt(row, 1);
 
                 // Проверяем наличие переводов
                 boolean hasEnglish = englishProps != null && englishProps.containsKey(key) &&
@@ -79,13 +83,10 @@ public class TranslationEditor extends JFrame {
                                      russianProps.getProperty(key) != null &&
                                      !russianProps.getProperty(key).trim().isEmpty();
 
-                // Проверяем, были ли изменения
-                boolean isModified = isRowModified(key, row);
+
 
                 // Раскрашивание строк
-                if (isModified) {
-                    c.setBackground(Color.LIGHT_GRAY); // Измененная строка
-                } else if (!hasEnglish && !hasRussian) {
+                if (!hasEnglish && !hasRussian) {
                     c.setBackground(Color.PINK); // Нет обоих переводов
                 } else if (!hasEnglish) {
                     c.setBackground(Color.PINK); // Нет английского перевода
@@ -100,22 +101,30 @@ public class TranslationEditor extends JFrame {
         };
 
         table.setRowHeight(60);
-        table.getColumnModel().getColumn(0).setPreferredWidth(150);
-        table.getColumnModel().getColumn(1).setPreferredWidth(300);
-        table.getColumnModel().getColumn(2).setPreferredWidth(300);
+        table.getColumnModel().getColumn(0).setMaxWidth(32);  // №
+        table.getColumnModel().getColumn(1).setPreferredWidth(150); // Ключ
+        table.getColumnModel().getColumn(2).setPreferredWidth(300); // Английский
+        table.getColumnModel().getColumn(3).setPreferredWidth(300); // Русский
+
+        // Установка кастомного рендерера для номеров строк
+        table.getColumnModel().getColumn(0).setCellRenderer(new RowNumberRenderer());
 
         // Установка кастомного редактора для многострочного текста
-        table.getColumnModel().getColumn(0).setCellEditor(new KeyCellEditor());
-        table.getColumnModel().getColumn(1).setCellEditor(new MultiLineCellEditor());
+        table.getColumnModel().getColumn(1).setCellEditor(new KeyCellEditor());
         table.getColumnModel().getColumn(2).setCellEditor(new MultiLineCellEditor());
+        table.getColumnModel().getColumn(3).setCellEditor(new MultiLineCellEditor());
 
         // Установка кастомного рендерера для отображения многострочного текста
-        table.getColumnModel().getColumn(0).setCellRenderer(new KeyCellRenderer());
-        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineCellRenderer());
+        table.getColumnModel().getColumn(1).setCellRenderer(new KeyCellRenderer());
         table.getColumnModel().getColumn(2).setCellRenderer(new MultiLineCellRenderer());
+        table.getColumnModel().getColumn(3).setCellRenderer(new MultiLineCellRenderer());
 
         // Добавляем слушатель изменений в таблице
         tableModel.addTableModelListener(e -> {
+            if (e.getType() == javax.swing.event.TableModelEvent.INSERT ||
+                e.getType() == javax.swing.event.TableModelEvent.DELETE) {
+                updateRowNumbers();
+            }
             table.repaint();
         });
 
@@ -139,6 +148,13 @@ public class TranslationEditor extends JFrame {
         toolbar.add(saveButton);
         toolbar.add(chooseFilesButton);
         add(toolbar, BorderLayout.NORTH);
+    }
+
+    // Обновление номеров строк
+    private void updateRowNumbers() {
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            tableModel.setValueAt(i + 1, i, 0);
+        }
     }
 
     private void chooseFiles() {
@@ -175,21 +191,6 @@ public class TranslationEditor extends JFrame {
         }
     }
 
-    private boolean isRowModified(String key, int row) {
-        if (originalEnglishProps == null || originalRussianProps == null) {
-            return false;
-        }
-
-        String currentEnglish = (String) tableModel.getValueAt(row, 1);
-        String currentRussian = (String) tableModel.getValueAt(row, 2);
-
-        String originalEnglish = originalEnglishProps.getProperty(key, "");
-        String originalRussian = originalRussianProps.getProperty(key, "");
-
-        return !Objects.equals(currentEnglish, originalEnglish) ||
-               !Objects.equals(currentRussian, originalRussian);
-    }
-
     private void setupMenuBar() {
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu("Файл");
@@ -217,8 +218,6 @@ public class TranslationEditor extends JFrame {
 
         englishProps = new OrderedProperties();
         russianProps = new OrderedProperties();
-        originalEnglishProps = new OrderedProperties();
-        originalRussianProps = new OrderedProperties();
 
         try {
             // Загрузка английских переводов
@@ -226,9 +225,6 @@ public class TranslationEditor extends JFrame {
                 try (InputStreamReader reader = new InputStreamReader(
                         new FileInputStream(englishFile), "UTF-8")) {
                     englishProps.load(reader);
-                    // Создаем копию для отслеживания изменений
-                    originalEnglishProps.load(new InputStreamReader(
-                            new FileInputStream(englishFile), "UTF-8"));
                 }
             }
 
@@ -237,22 +233,15 @@ public class TranslationEditor extends JFrame {
                 try (InputStreamReader reader = new InputStreamReader(
                         new FileInputStream(russianFile), "UTF-8")) {
                     russianProps.load(reader);
-                    // Создаем копию для отслеживания изменений
-                    originalRussianProps.load(new InputStreamReader(
-                            new FileInputStream(russianFile), "UTF-8"));
                 }
             }
 
-            // Создание объединенного списка ключей
-            Set<String> allKeys = new TreeSet<>();
-            allKeys.addAll(englishProps.stringPropertyNames());
-            allKeys.addAll(russianProps.stringPropertyNames());
-
             // Заполнение таблицы
-            for (String key : allKeys) {
+            int rowNum = 1;
+            for (String key : englishProps.stringPropertyNames()) {
                 String englishValue = englishProps.getProperty(key, "");
                 String russianValue = russianProps.getProperty(key, "");
-                tableModel.addRow(new Object[]{key, englishValue, russianValue});
+                tableModel.addRow(new Object[]{rowNum++, key, englishValue, russianValue});
             }
 
             // Обновляем отображение для применения цветов
@@ -266,16 +255,11 @@ public class TranslationEditor extends JFrame {
 
     private void saveProperties() {
         try {
-            // Очистка существующих свойств
-            englishProps.clear();
-            russianProps.clear();
-
             // Заполнение свойств из таблицы
             for (int i = 0; i < tableModel.getRowCount(); i++) {
-                String key = (String) tableModel.getValueAt(i, 0);
-                String englishValue = (String) tableModel.getValueAt(i, 1);
-                String russianValue = (String) tableModel.getValueAt(i, 2);
-
+                String key = (String) tableModel.getValueAt(i, 1);
+                String englishValue = (String) tableModel.getValueAt(i, 2);
+                String russianValue = (String) tableModel.getValueAt(i, 3);
                 if (key != null && !key.trim().isEmpty()) {
                     englishProps.setProperty(key, englishValue != null ? englishValue : "");
                     russianProps.setProperty(key, russianValue != null ? russianValue : "");
@@ -286,7 +270,7 @@ public class TranslationEditor extends JFrame {
             if (englishFile != null && !englishFile.isEmpty()) {
                 try (OutputStreamWriter writer = new OutputStreamWriter(
                         new FileOutputStream(englishFile), "UTF-8")) {
-                    englishProps.store(writer, "English translations");
+                    englishProps.store(writer, null);
                 }
             }
 
@@ -294,15 +278,9 @@ public class TranslationEditor extends JFrame {
             if (russianFile != null && !russianFile.isEmpty()) {
                 try (OutputStreamWriter writer = new OutputStreamWriter(
                         new FileOutputStream(russianFile), "UTF-8")) {
-                    russianProps.store(writer, "Russian translations");
+                    russianProps.store(writer, null);
                 }
             }
-
-            // Обновляем оригинальные свойства
-            originalEnglishProps.clear();
-            originalRussianProps.clear();
-            originalEnglishProps.putAll(englishProps);
-            originalRussianProps.putAll(russianProps);
 
             // Обновляем отображение для применения цветов после сохранения
             table.repaint();
@@ -324,7 +302,7 @@ public class TranslationEditor extends JFrame {
             // Проверяем, существует ли уже такой ключ
             boolean keyExists = false;
             for (int i = 0; i < tableModel.getRowCount(); i++) {
-                if (key.equals(tableModel.getValueAt(i, 0))) {
+                if (key.equals(tableModel.getValueAt(i, 1))) {
                     keyExists = true;
                     break;
                 }
@@ -335,11 +313,15 @@ public class TranslationEditor extends JFrame {
                 return;
             }
 
-            tableModel.addRow(new Object[]{key, "", ""});
+            int newRowNumber = tableModel.getRowCount() + 1;
+            tableModel.addRow(new Object[]{newRowNumber, key, "", ""});
             int lastRow = tableModel.getRowCount() - 1;
             table.setRowSelectionInterval(lastRow, lastRow);
-            table.editCellAt(lastRow, 1); // Начинаем редактирование с английского перевода
+            table.editCellAt(lastRow, 2); // Начинаем редактирование с английского перевода
             table.requestFocus();
+
+            // Обновляем все номера строк
+            updateRowNumbers();
         }
 
         // Обновляем отображение для применения цветов
@@ -355,12 +337,36 @@ public class TranslationEditor extends JFrame {
                     JOptionPane.YES_NO_OPTION);
             if (result == JOptionPane.YES_OPTION) {
                 tableModel.removeRow(selectedRow);
+                // Обновляем номера строк после удаления
+                updateRowNumbers();
                 // Обновляем отображение для применения цветов
                 table.repaint();
             }
         } else {
             JOptionPane.showMessageDialog(this, "Выберите строку для удаления",
                     "Предупреждение", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    // Кастомный рендерер для номеров строк
+    private static class RowNumberRenderer extends JLabel implements TableCellRenderer {
+        public RowNumberRenderer() {
+            setHorizontalAlignment(JLabel.CENTER);
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+            if (isSelected) {
+                setBackground(table.getSelectionBackground());
+                setForeground(table.getSelectionForeground());
+            } else {
+                setBackground(new Color(240, 240, 240));
+                setForeground(table.getForeground());
+            }
+            setText((value == null) ? "" : value.toString());
+            return this;
         }
     }
 
