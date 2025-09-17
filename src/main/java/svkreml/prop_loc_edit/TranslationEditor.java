@@ -6,7 +6,9 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.io.*;
-import java.util.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.prefs.Preferences;
 
 public class TranslationEditor extends JFrame {
@@ -16,7 +18,7 @@ public class TranslationEditor extends JFrame {
     private OrderedProperties russianProps;
     private String englishFile;
     private String russianFile;
-    private Preferences prefs;
+    private final Preferences prefs;
     private static final String PREF_ENGLISH_FILE = "englishFile";
     private static final String PREF_RUSSIAN_FILE = "russianFile";
 
@@ -223,7 +225,7 @@ public class TranslationEditor extends JFrame {
             // Загрузка английских переводов
             if (englishFile != null && !englishFile.isEmpty() && new File(englishFile).exists()) {
                 try (InputStreamReader reader = new InputStreamReader(
-                        new FileInputStream(englishFile), "UTF-8")) {
+                        Files.newInputStream(Paths.get(englishFile)), StandardCharsets.UTF_8)) {
                     englishProps.load(reader);
                 }
             }
@@ -231,7 +233,7 @@ public class TranslationEditor extends JFrame {
             // Загрузка русских переводов
             if (russianFile != null && !russianFile.isEmpty() && new File(russianFile).exists()) {
                 try (InputStreamReader reader = new InputStreamReader(
-                        new FileInputStream(russianFile), "UTF-8")) {
+                        Files.newInputStream(Paths.get(russianFile)), StandardCharsets.UTF_8)) {
                     russianProps.load(reader);
                 }
             }
@@ -269,7 +271,7 @@ public class TranslationEditor extends JFrame {
             // Сохранение английских переводов
             if (englishFile != null && !englishFile.isEmpty()) {
                 try (OutputStreamWriter writer = new OutputStreamWriter(
-                        new FileOutputStream(englishFile), "UTF-8")) {
+                        Files.newOutputStream(Paths.get(englishFile)), StandardCharsets.UTF_8)) {
                     englishProps.store(writer, null);
                 }
             }
@@ -277,7 +279,7 @@ public class TranslationEditor extends JFrame {
             // Сохранение русских переводов
             if (russianFile != null && !russianFile.isEmpty()) {
                 try (OutputStreamWriter writer = new OutputStreamWriter(
-                        new FileOutputStream(russianFile), "UTF-8")) {
+                        Files.newOutputStream(Paths.get(russianFile)), StandardCharsets.UTF_8)) {
                     russianProps.store(writer, null);
                 }
             }
@@ -394,7 +396,7 @@ public class TranslationEditor extends JFrame {
 
     // Кастомный редактор для ключей
     private static class KeyCellEditor extends AbstractCellEditor implements TableCellEditor {
-        private JTextField textField;
+        private final JTextField textField;
 
         public KeyCellEditor() {
             textField = new JTextField();
@@ -439,7 +441,7 @@ public class TranslationEditor extends JFrame {
 
     // Кастомный редактор для многострочного текста
     private static class MultiLineCellEditor extends AbstractCellEditor implements TableCellEditor {
-        private JTextArea textArea;
+        private final JTextArea textArea;
 
         public MultiLineCellEditor() {
             textArea = new JTextArea();
@@ -454,15 +456,6 @@ public class TranslationEditor extends JFrame {
                     fireEditingStopped();
                 }
             });
-
-            // Сохранение при нажатии Enter
-/*            textArea.getInputMap().put(KeyStroke.getKeyStroke("ENTER"), "save");
-            textArea.getActionMap().put("save", new AbstractAction() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    fireEditingStopped();
-                }
-            });*/
         }
 
         @Override

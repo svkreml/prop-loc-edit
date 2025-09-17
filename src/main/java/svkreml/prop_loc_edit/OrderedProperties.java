@@ -30,8 +30,8 @@ public class OrderedProperties extends Properties {
     }
 
     @Override
-    public void putAll(Map<? extends Object, ? extends Object> t) {
-        for (Map.Entry<? extends Object, ? extends Object> entry : t.entrySet()) {
+    public synchronized void putAll(Map<?, ?> t) {
+        for (Map.Entry<?, ?> entry : t.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
             put(key, value);
@@ -40,7 +40,7 @@ public class OrderedProperties extends Properties {
 
     // Переопределяем для сохранения порядка
     @Override
-    public Object put(Object key, Object value) {
+    public synchronized Object put(Object key, Object value) {
         return linkedMap.put(key, value);
     }
 
@@ -60,7 +60,7 @@ public class OrderedProperties extends Properties {
     }
 
     @Override
-    public void clear() {
+    public synchronized void clear() {
         linkedMap.clear();
     }
 
@@ -108,18 +108,14 @@ public class OrderedProperties extends Properties {
     @Override
     public synchronized void load(InputStream inStream) throws IOException {
         super.load(inStream);
-        for (Map.Entry<Object, Object> entry : super.entrySet()) {
-            linkedMap.put(entry.getKey(), entry.getValue());
-        }
+        linkedMap.putAll(this);
     }
 
     @Override
     public synchronized void load(Reader reader) throws IOException {
         Objects.requireNonNull(reader, "reader parameter is null");
         super.load(reader);
-        for (Map.Entry<Object, Object> entry : super.entrySet()) {
-            linkedMap.put(entry.getKey(), entry.getValue());
-        }
+        linkedMap.putAll(this);
     }
 
     // Сохраняем порядок при сохранении
@@ -132,8 +128,7 @@ public class OrderedProperties extends Properties {
 
     @Override
     public void store(Writer writer, String comments)
-            throws IOException
-    {
+            throws IOException {
         extracted(writer);
     }
 
@@ -142,9 +137,9 @@ public class OrderedProperties extends Properties {
             writer.write(entry.getKey().toString().replace(" ", "\\ ") + "=" + entry.getValue().toString()
                     .replace("\\", "\\\\")
                     .replace("\n", "\\\n")
-                    .replace(":","\\:")
-                    .replace("!","\\!")
-                    .replace("=","\\=")
+                    .replace(":", "\\:")
+                    .replace("!", "\\!")
+                    .replace("=", "\\=")
                          + "\n");
         }
     }
@@ -152,7 +147,7 @@ public class OrderedProperties extends Properties {
     @Override
     public String getProperty(String key) {
         Object oval = linkedMap.get(key);
-        String sval = (oval instanceof String) ? (String)oval : null;
+        String sval = (oval instanceof String) ? (String) oval : null;
         Properties defaults;
         return ((sval == null) && ((defaults = this.defaults) != null)) ? defaults.getProperty(key) : sval;
     }
