@@ -3,6 +3,7 @@ package svkreml.prop_loc_edit;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class OrderedProperties extends Properties {
@@ -36,6 +37,12 @@ public class OrderedProperties extends Properties {
             Object value = entry.getValue();
             put(key, value);
         }
+    }
+
+
+    @Override
+    public synchronized void forEach(BiConsumer<? super Object, ? super Object> action) {
+        linkedMap.forEach(action);
     }
 
     // Переопределяем для сохранения порядка

@@ -278,10 +278,19 @@ public class TranslationEditor extends JFrame {
 
             // Сохранение русских переводов
             if (russianFile != null && !russianFile.isEmpty()) {
+                OrderedProperties finalRussianProps = new OrderedProperties();
+
+                englishProps.forEach(
+                        (k,v) -> {
+                            finalRussianProps.put(k, russianProps.getProperty((String) k));
+                        }
+                );
+
                 try (OutputStreamWriter writer = new OutputStreamWriter(
                         Files.newOutputStream(Paths.get(russianFile)), StandardCharsets.UTF_8)) {
-                    russianProps.store(writer, null);
+                    finalRussianProps.store(writer, null);
                 }
+                russianProps = finalRussianProps;
             }
 
             // Обновляем отображение для применения цветов после сохранения
