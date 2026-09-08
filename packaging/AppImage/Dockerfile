@@ -44,7 +44,7 @@ RUN jpackage --type app-image \
         --vendor svkreml \
         --input /work/target \
         --main-jar prop-loc-edit-2.0-jar-with-dependencies.jar \
-        --main-class svkreml.prop_loc_edit.TranslationEditor \
+        --main-class svkreml.prop_loc_edit.gui.TranslationEditor \
         --runtime-image /opt/runtime \
         --java-options "-Dfile.encoding=UTF-8" \
         --dest /app
