@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 public class OrderedProperties extends Properties {
     private final LinkedHashMap<Object, Object> linkedMap = new LinkedHashMap<>();
+    private boolean escapeUnicode;
 
     @Override
     public Set<String> stringPropertyNames() {
@@ -69,6 +70,11 @@ public class OrderedProperties extends Properties {
     @Override
     public synchronized void clear() {
         linkedMap.clear();
+    }
+
+    @Override
+    public synchronized Object remove(Object key) {
+        return linkedMap.remove(key);
     }
 
     @Override
@@ -141,14 +147,64 @@ public class OrderedProperties extends Properties {
 
     private void extracted(Writer writer) throws IOException {
         for (Map.Entry<Object, Object> entry : linkedMap.entrySet()) {
-            writer.write(entry.getKey().toString().replace(" ", "\\ ") + "=" + entry.getValue().toString()
-                    .replace("\\", "\\\\")
-                    .replace("\n", "\\\n")
-                    .replace(":", "\\:")
-                    .replace("!", "\\!")
-                    .replace("=", "\\=")
-                         + "\n");
+            String key = escapeKey(entry.getKey().toString());
+            String value = escapeValue(entry.getValue().toString());
+            writer.write(maybeEscapeUnicode(key) + "=" + maybeEscapeUnicode(value) + "\n");
         }
+    }
+
+    private String maybeEscapeUnicode(String s) {
+        if (!escapeUnicode) {
+            return s;
+        }
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c > 0x7E) {
+                sb.append("\\u").append(String.format("%04x", (int) c));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String escapeKey(String key) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : key.toCharArray()) {
+            if (c == ' ' || c == '\t' || c == '\\' || c == '=' || c == ':' || c == '#' || c == '!' || c == '\n' || c == '\r') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    private static String escapeValue(String value) {
+        StringBuilder sb = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
+                    sb.append(c);
+            }
+        }
+        if (!value.isEmpty() && value.charAt(0) == ' ') {
+            sb.insert(0, '\\');
+        }
+        return sb.toString();
     }
 
     @Override
@@ -157,5 +213,13 @@ public class OrderedProperties extends Properties {
         String sval = (oval instanceof String) ? (String) oval : null;
         Properties defaults;
         return ((sval == null) && ((defaults = this.defaults) != null)) ? defaults.getProperty(key) : sval;
+    }
+
+    public boolean isEscapeUnicode() {
+        return escapeUnicode;
+    }
+
+    public void setEscapeUnicode(boolean escapeUnicode) {
+        this.escapeUnicode = escapeUnicode;
     }
 }

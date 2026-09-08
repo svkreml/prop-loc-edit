@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Редактор переводов
+Comment=Редактор переводов .properties (с поддержкой ИИ)
+Exec=prop-loc-edit
+Icon=prop-loc-edit
+Type=Application
+Categories=Utility;Development;
+StartupNotify=false
+Terminal=false
