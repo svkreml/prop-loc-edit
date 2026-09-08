@@ -1,0 +1,35 @@
+name: Release AppImage
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build AppImage (Docker)
+        run: bash packaging/AppImage/build.sh
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prop-loc-edit-AppImage
+          path: target/appimage/*.AppImage
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: prop-loc-edit ${{ github.ref_name }}
+          files: target/appimage/*.AppImage
+          generate_release_notes: true
